@@ -9,17 +9,37 @@ import Foundation
 import CloudKit
 import RealmSwift
 
+// MARK: - CKRECORDCONVERTIBLE
+/// Use `CKRecordConvertible` to “mark” your Realm-based model types (i.e. `Object` subclasses)
+/// as being convertable to `CKRecord` instances to permit syncing to iCloud.
+///
+/// The extension-provided implementation of `CKRecordConvertible` provides the ability
+/// to convert your Realm-based model types into `CKRecord` instances.
+/// - Attention:
+///   􀃮 Be aware that (at present) `CKRecordConvertible`’s implementation (see the default extension)
+///      does *not* support Realm `List`s of non-primitive types. This means that a property on some model
+///      class of type `List<Int>`, say, *will* correctly sync using IceCream, while a property of type
+///      `List<SomeOtherModelClass>` will *not* sync (at all). See the main documentation for a solution.
 public protocol CKRecordConvertible {
     static var recordType: String { get }
     static var zoneID: CKRecordZone.ID { get }
     static var databaseScope: CKDatabase.Scope { get }
     
+   /// The recordID used to identify this model object in iCloud.
     var recordID: CKRecord.ID { get }
+   
+   /// Returns a `CKRecord` instance that will be used to “upload” this `CKRecordConvertible`
+   /// (which is typically one of your Realm-based model classes) to iCloud.
+   ///
+   /// This is where the the upload-part of the “heavy lifting” is done, converting the class
+   /// that adopts `CKRecordConvertible` into a `CKRecord` suitable for uploading to iCloud.
     var record: CKRecord { get }
 
+   /// `true` if this model object has been (soft) deleted, or `false` otherwise.
     var isDeleted: Bool { get }
 }
 
+// MARK: - CKRECORDCONVERTIBLE DEFAULT IMPLEMENTATION
 extension CKRecordConvertible where Self: Object {
     
     public static var databaseScope: CKDatabase.Scope {
@@ -75,7 +95,15 @@ extension CKRecordConvertible where Self: Object {
         fatalError("Should have a reasonable recordID")
     }
     
-    // Simultaneously init CKRecord with zoneID and recordID, thanks to this guy: https://stackoverflow.com/questions/45429133/how-to-initialize-ckrecord-with-both-zoneid-and-recordid
+   /// Returns a `CKRecord` instance that will be used to “upload” this `CKRecordConvertible`
+   /// (which is typically one of your Realm-based model classes) to iCloud.
+   ///
+   /// This is where the the upload-part of the “heavy lifting” is done, converting the class
+   /// that adopts `CKRecordConvertible` into a `CKRecord` suitable for uploading to iCloud.
+   ///
+   /// **Implementation Notes:**
+   /// Simultaneously init CKRecord with zoneID and recordID, thanks to this guy:
+   /// https://stackoverflow.com/questions/45429133/how-to-initialize-ckrecord-with-both-zoneid-and-recordid
     public var record: CKRecord {
         let r = CKRecord(recordType: Self.recordType, recordID: recordID)
         let properties = objectSchema.properties
@@ -114,6 +142,8 @@ extension CKRecordConvertible where Self: Object {
                     let array = Array(list)
                     r[prop.name] = array as CKRecordValue
                 default:
+                    let typeName = String(reflecting: type(of: self))
+                    print("⚠️ WARNING: Realm property \(typeName)).\(prop.name) is not supported by IceCream")
                     break
                     /// Other inner types of List is not supported yet
                 }
@@ -141,9 +171,7 @@ extension CKRecordConvertible where Self: Object {
             default:
                 break
             }
-            
         }
         return r
     }
-    
 }
