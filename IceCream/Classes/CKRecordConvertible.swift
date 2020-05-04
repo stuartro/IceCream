@@ -11,7 +11,7 @@ import RealmSwift
 
 // MARK: - CKRECORDCONVERTIBLE
 /// Use `CKRecordConvertible` to “mark” your Realm-based model types (i.e. `Object` subclasses)
-/// as being convertable to `CKRecord` instances to permit syncing to iCloud.
+/// as being convertable *to* `CKRecord` instances to permit syncing to iCloud.
 ///
 /// The extension-provided implementation of `CKRecordConvertible` provides the ability
 /// to convert your Realm-based model types into `CKRecord` instances.

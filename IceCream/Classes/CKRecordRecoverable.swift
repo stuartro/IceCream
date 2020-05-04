@@ -8,9 +8,21 @@
 import CloudKit
 import RealmSwift
 
-public protocol CKRecordRecoverable {
-    
-}
+// MARK: - CKRECORDRECOVERABLE
+/// Use `CKRecordRecoverable` to “mark” your Realm-based model types (i.e. `Object` subclasses)
+/// as being convertable *from* `CKRecord` instances to permit syncing from iCloud.
+///
+/// The extension-provided implementation of `CKRecordRecoverable` provides the ability
+/// to convert “incoming” iCloud updates (i.e. `CKRecord` instances) into updates to be applied
+/// to your Realm-based model types. See `parseFromRecord` in the extension-provided implementation.
+/// - Attention:
+///   􀃮 Be aware that (at present) `CKRecordRecoverable`’s implementation (see the default extension)
+///      does *not* support Realm `List`s of non-primitive types. This means that a property on some model
+///      class of type `List<Int>`, say, *will* correctly sync using IceCream, while a property of type
+///      `List<SomeOtherModelClass>` will *not* sync (at all). See the main documentation for a solution.
+public protocol CKRecordRecoverable {}
+
+// MARK: - CKRECORDRECOVERABLE DEFAULT IMPLEMENTATION
 
 extension CKRecordRecoverable where Self: Object {
     static func parseFromRecord(record: CKRecord, realm: Realm) -> Self? {
@@ -56,6 +68,8 @@ extension CKRecordRecoverable where Self: Object {
                     list.append(objectsIn: value)
                     recordValue = list
                 default:
+                    let typeName = String(reflecting: type(of: self))
+                    print("⚠️ WARNING: Realm property \(typeName)).\(prop.name) is not supported by IceCream")
                     break
                 }
                 o.setValue(recordValue, forKey: prop.name)
